@@ -111,10 +111,11 @@ function f = cost(x,data)
 
 end
 
-%% Find minimization with a given x0
+%% Find global minimum
 function [x_min, minval] = findmin(f)
-    minval = 1
-    for x1=0:0.:1
+    minval = 1;
+  
+    for x1=0:0.5:1
         for x2=0:0.5:1
             for x3=0:0.5:1
                 for x4=0:0.5:1
@@ -130,15 +131,14 @@ function [x_min, minval] = findmin(f)
                     
                     x0 = [x1 x2 x3 x4];
                     
-                    [x,cost] = fmincon(f,x0,A,b,Af,bf,lb,ub);
-                    minval
-                    if cost < minval
-                        minval = cost;
-                        x_min = x
+                    [x,mincost] = fmincon(f,x0,A,b,Af,bf,lb,ub);
+                    disp(mincost)
+                    if mincost < minval
+                        minval = mincost;
+                        x_min = x;
                     end
                 end
             end
         end
     end
-
 end
