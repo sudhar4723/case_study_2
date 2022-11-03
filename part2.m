@@ -1,15 +1,14 @@
 clc; clear; close all;
 % Load data
 load('COVIDdata.mat')
-load('mockdata.mat')
 
 %% Initalize variables
-timelength = length(COVID_STLmetro.cases);
+
 
 %% Preprocess the data
 
 STLmetroPop = STLmetroPop * 100000;
-
+timelength = length(COVID_STLmetro.cases);
 % Cnvert it to percentage
 COVID_STLmetro.cases = COVID_STLmetro.cases/STLmetroPop;
 COVID_STLmetro.deaths = COVID_STLmetro.deaths/STLmetroPop;
@@ -26,23 +25,26 @@ costfun= @(x) cost(x,COVIDData);
 % Set A and b to impose a parameter inequality constraint of the form A*x < b
 % Note that this is imposed element-wise
 % If you don't want such a constraint, keep these matrices empty.
-A=[];
-b=[];
-%% set up some fixed constraints
 
-Af = [];
-bf = [];
-%% set up upper and lower bound constraints
-ub = [1 1 1 1]';
-lb = [0 0 0 0 ]';
-% Specify some initial parameters for the optimizer to start from
-x0 = [0.05 0.01 0.1 0.04]; 
-% This is the key line that tries to opimize your model parameters in order to
-% fit the data
-% note tath you 
-x = fmincon(costfun,x0,A,b,Af,bf,lb,ub);
+[x_opt,min] = findmin(costfun);
 
-y = predicting(x,timelength,[1 0 0 0]);
+% Predicting the data
+y = predicting(x_opt,timelength,[1 0 0 0]);
+
+costfun([0.05 0.01 0.2 0.3])
+% PDeaths
+figure;
+plot(y(:,4)); hold on; plot(COVID_STLmetro.deaths); hold off;
+title('Deaths')
+legend('Predicted deaths', 'Actual deaths')
+%Newcases
+figure;
+plot(y(:,2)); hold on; plot(newcases); hold off;
+title('New cases')
+legend('Predicted newcases', 'Actual newcases')
+
+
+
 
 %% IMPLEMENTATIONS OF FUNCTIONS
 %% Predicting function
@@ -81,7 +83,6 @@ function f = predicting(x,t,initial_conditions)
     
     sys_sir_base = ss(A,B,eye(4),zeros(4,1),1);
     y = lsim(sys_sir_base,zeros(t,1),linspace(0,t-1,t),x0);
-    legend('S','I','R','D');
     f = y;
 end
 
@@ -102,10 +103,42 @@ function f = cost(x,data)
     % Fitting the data
     y = predicting(x, timeframes, ics);
     % Calculating the cost functions
-    comparableY = [ x(1)*y(:, 1)  y(:, 4)];
-    diff = normalize(data-comparableY,2,'scale');
+    comparableY = [ y(:, 2)  y(:, 4)];
+    diff = data-comparableY;
     % Matrix of squared errors
     SE = arrayfun(@(n) norm(diff(n,:)), 1:size(diff,1));
     f = mean(SE);
+
+end
+
+%% Find minimization with a given x0
+function [x_min, minval] = findmin(f)
+    minval = 1
+    for x1=0:0.:1
+        for x2=0:0.5:1
+            for x3=0:0.5:1
+                for x4=0:0.5:1
+                    A=[];
+                    b=[];
+                    %% set up some fixed constraints
+                    
+                    Af = [];
+                    bf = [];
+                    %% set up upper and lower bound constraints
+                    ub = [1 1 1 1]';
+                    lb = [0 0 0 0]';
+                    
+                    x0 = [x1 x2 x3 x4];
+                    
+                    [x,cost] = fmincon(f,x0,A,b,Af,bf,lb,ub);
+                    minval
+                    if cost < minval
+                        minval = cost;
+                        x_min = x
+                    end
+                end
+            end
+        end
+    end
 
 end
